@@ -142,6 +142,7 @@ def save_content(data: dict) -> None:
                 for index, work in enumerate(works, start=1)
             ],
         )
+    export_content()
 
 
 class Handler(BaseHTTPRequestHandler):
