@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title description">
+  <title id="title">공학자이자 소설 작가의 포트폴리오</title>
+  <desc id="description">문제를 분석하고 해결책을 설계하며, 이야기를 쓰는 포트폴리오</desc>
+  <defs>
+    <radialGradient id="glow" cx="78%" cy="47%" r="55%">
+      <stop offset="0" stop-color="#41222e"/>
+      <stop offset="1" stop-color="#101014" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
+      <path d="M48 0H0V48" fill="none" stroke="#fff" stroke-opacity=".055" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="630" fill="#101014"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+  <circle cx="924" cy="315" r="205" fill="none" stroke="#fff" stroke-opacity=".18"/>
+  <circle cx="924" cy="315" r="154" fill="none" stroke="#fa3448" stroke-opacity=".72" stroke-width="2"/>
+  <circle cx="924" cy="315" r="103" fill="#fa3448" fill-opacity=".12" stroke="#ffd84d" stroke-opacity=".72"/>
+  <path d="M758 315h62l24-42 47 87 28-53h151" fill="none" stroke="#ffd84d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity=".9"/>
+  <circle cx="924" cy="315" r="8" fill="#fa3448"/>
+  <text x="96" y="130" fill="#ffd84d" font-family="Arial,sans-serif" font-size="18" font-weight="700" letter-spacing="6">ENGINEERING · CURIOSITY · STORIES</text>
+  <text x="92" y="270" fill="#f6f3ef" font-family="Arial,'Noto Sans KR',sans-serif" font-size="68" font-weight="800">공학자이자</text>
+  <text x="92" y="360" fill="#f6f3ef" font-family="Arial,'Noto Sans KR',sans-serif" font-size="68" font-weight="800">소설 작가</text>
+  <rect x="96" y="404" width="72" height="6" rx="3" fill="#fa3448"/>
+  <text x="96" y="465" fill="#c2bfc6" font-family="Arial,'Noto Sans KR',sans-serif" font-size="25">문제를 분석하고, 이야기를 씁니다.</text>
+  <text x="96" y="560" fill="#a5a2aa" font-family="Arial,sans-serif" font-size="16" font-weight="700" letter-spacing="3">ENGINEER  ×  NOVELIST</text>
+  <text x="1098" y="566" fill="#ffd84d" font-family="Arial,sans-serif" font-size="18" font-weight="700" text-anchor="end">PORTFOLIO</text>
+</svg>
