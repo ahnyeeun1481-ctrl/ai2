@@ -5,6 +5,28 @@ const copyEmailButton = document.querySelector('.copy-email-button');
 const copyStatus = document.querySelector('.copy-status');
 const backToTopButton = document.querySelector('.back-to-top-button');
 
+fetch('site-content.json')
+  .then((response) => {
+    if (!response.ok) throw new Error('No exported portfolio content');
+    return response.json();
+  })
+  .then(({ profile, works }) => {
+    document.querySelectorAll('[data-content]').forEach((element) => {
+      const key = element.dataset.content;
+      if (profile[key]) element.textContent = profile[key];
+    });
+    document.querySelectorAll('[data-work-link]').forEach((link) => {
+      const work = works.find((item) => item.id === link.dataset.workLink);
+      if (!work) return;
+      link.href = work.url;
+      link.querySelector(`[data-work-title="${work.id}"]`).textContent = work.title;
+      link.querySelector(`[data-work-platform="${work.id}"]`).textContent = `${work.platform} · ${work.kind.toUpperCase()}`;
+    });
+  })
+  .catch(() => {
+    // Keep the baked-in copy when no exported SQLite content is published.
+  });
+
 const copyTextFallback = (text) => {
   const temporaryInput = document.createElement('textarea');
   temporaryInput.value = text;

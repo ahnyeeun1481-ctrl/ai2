@@ -7,6 +7,7 @@
   <meta name="description" content="문제를 분석하고 해결책을 설계하는 공학자, 인물과 이야기를 쓰는 소설 작가의 포트폴리오입니다. 공학 역량과 웹소설·전자책 작품을 소개합니다.">
   <meta name="robots" content="index,follow,max-image-preview:large">
   <link rel="canonical" href="https://ahnyeeun1481-ctrl.github.io/ai2/">
+  <link rel="alternate" type="application/json" href="site-content.json" title="Portfolio content data">
   <meta property="og:type" content="website">
   <meta property="og:locale" content="ko_KR">
   <meta property="og:site_name" content="공학자이자 소설 작가">
@@ -95,12 +96,12 @@
           <h2>복잡한 문제를<br><span class="accent-text">풀어가는 공학자.</span></h2>
         </div>
         <div class="about-copy">
-          <p>복잡한 문제를 만나면 먼저 현상을 살펴보고, 무엇이 핵심인지부터 생각합니다. 문제를 작은 단계로 나눈 뒤 가설을 세우고 직접 확인하면서, 근거에 맞는 답을 찾아갑니다.</p>
-          <p>좋은 아이디어가 실제로 쓰이는 결과가 되려면 설계와 구현은 물론, 시험하고 고치는 과정도 중요하다고 생각합니다. 다른 사람의 의견을 듣고 함께 방법을 찾아가는 일도 제가 소중하게 여기는 과정입니다.</p>
+          <p data-content="about_paragraph_1">복잡한 문제를 만나면 먼저 현상을 살펴보고, 무엇이 핵심인지부터 생각합니다. 문제를 작은 단계로 나눈 뒤 가설을 세우고 직접 확인하면서, 근거에 맞는 답을 찾아갑니다.</p>
+          <p data-content="about_paragraph_2">좋은 아이디어가 실제로 쓰이는 결과가 되려면 설계와 구현은 물론, 시험하고 고치는 과정도 중요하다고 생각합니다. 다른 사람의 의견을 듣고 함께 방법을 찾아가는 일도 제가 소중하게 여기는 과정입니다.</p>
           <div class="identity-list">
-            <div><span>NAME</span><strong>[이름을 입력하세요]</strong></div>
-            <div><span>FIELD</span><strong>[전공 · 관심 공학 분야]</strong></div>
-            <div><span>FOCUS</span><strong>[관심 기술 · 연구 주제]</strong></div>
+            <div><span>NAME</span><strong data-content="name">[이름을 입력하세요]</strong></div>
+            <div><span>FIELD</span><strong data-content="field">[전공 · 관심 공학 분야]</strong></div>
+            <div><span>FOCUS</span><strong data-content="focus">[관심 기술 · 연구 주제]</strong></div>
           </div>
         </div>
       </div>
@@ -116,17 +117,17 @@
             <div class="writing-emblem" aria-hidden="true"><span>문장</span><b>“</b></div>
           </div>
           <div class="writing-copy">
-            <p class="writing-lead">공학이 세상이 어떻게 움직이는지 살피는 일이라면, 글쓰기는 사람의 마음과 상상을 들여다보는 일이라고 생각합니다.</p>
-            <p>저는 인물들이 어떤 선택을 하고, 그 선택이 관계와 감정을 어떻게 바꾸는지 이야기로 풀어냅니다. 떠오른 장면을 한 문장씩 이어 붙이며, 읽는 분이 다음 이야기를 궁금해할 만한 세계를 만들어 갑니다.</p>
-            <p>웹소설과 전자책 작품은 아래 작가 페이지에서 만나보실 수 있습니다.</p>
-            <a class="writer-link" href="https://www.goodnovel.com/author/324108716" target="_blank" rel="noopener noreferrer">
+            <p class="writing-lead" data-content="writing_paragraph_1">공학이 세상이 어떻게 움직이는지 살피는 일이라면, 글쓰기는 사람의 마음과 상상을 들여다보는 일이라고 생각합니다.</p>
+            <p data-content="writing_paragraph_2">저는 인물들이 어떤 선택을 하고, 그 선택이 관계와 감정을 어떻게 바꾸는지 이야기로 풀어냅니다. 떠오른 장면을 한 문장씩 이어 붙이며, 읽는 분이 다음 이야기를 궁금해할 만한 세계를 만들어 갑니다.</p>
+            <p data-content="writing_intro">웹소설과 전자책 작품은 아래 작가 페이지에서 만나보실 수 있습니다.</p>
+            <a class="writer-link" data-work-link="webnovels" href="https://www.goodnovel.com/author/324108716" target="_blank" rel="noopener noreferrer">
               <span class="writer-link-icon" aria-hidden="true">↗</span>
-              <span><small>GOODNOVEL · WEB NOVELS</small><strong>웹소설 작품 보러 가기</strong></span>
+              <span><small data-work-platform="webnovels">GOODNOVEL · WEB NOVELS</small><strong data-work-title="webnovels">웹소설 작품 보러 가기</strong></span>
               <span class="writer-link-arrow" aria-hidden="true">↗</span>
             </a>
-            <a class="writer-link ebook-link" href="https://ssn.so/series/author/33793/" target="_blank" rel="noopener noreferrer">
+            <a class="writer-link ebook-link" data-work-link="ebooks" href="https://ssn.so/series/author/33793/" target="_blank" rel="noopener noreferrer">
               <span class="writer-link-icon" aria-hidden="true">▤</span>
-              <span><small>SSN · E-BOOKS</small><strong>전자책 작품 보러 가기</strong></span>
+              <span><small data-work-platform="ebooks">SSN · E-BOOKS</small><strong data-work-title="ebooks">전자책 작품 보러 가기</strong></span>
               <span class="writer-link-arrow" aria-hidden="true">↗</span>
             </a>
           </div>
