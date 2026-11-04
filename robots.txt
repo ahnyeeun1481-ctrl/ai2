@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://ahnyeeun1481-ctrl.github.io/ai2/sitemap.xml
