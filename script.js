@@ -4,6 +4,11 @@ const progressBar = document.querySelector('.reading-progress-bar');
 const copyEmailButton = document.querySelector('.copy-email-button');
 const copyStatus = document.querySelector('.copy-status');
 const backToTopButton = document.querySelector('.back-to-top-button');
+const commentForm = document.querySelector('#comment-form');
+const commentList = document.querySelector('#comment-list');
+const commentCount = document.querySelector('#comment-count');
+const commentStatus = document.querySelector('#comment-status');
+const LOCAL_COMMENTS_KEY = 'portfolio-guestbook-comments';
 
 fetch('site-content.json')
   .then((response) => {
@@ -26,6 +31,88 @@ fetch('site-content.json')
   .catch(() => {
     // Keep the baked-in copy when no exported SQLite content is published.
   });
+
+const readLocalComments = () => {
+  try {
+    const comments = JSON.parse(localStorage.getItem(LOCAL_COMMENTS_KEY) || '[]');
+    return Array.isArray(comments) ? comments : [];
+  } catch {
+    return [];
+  }
+};
+
+const formatCommentDate = (value) => {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '' : new Intl.DateTimeFormat('ko-KR', { dateStyle: 'medium' }).format(date);
+};
+
+const renderComments = (comments) => {
+  commentList.replaceChildren();
+  commentCount.textContent = String(comments.length);
+  if (!comments.length) {
+    const empty = document.createElement('li');
+    empty.className = 'comment-empty';
+    empty.textContent = '아직 댓글이 없습니다. 첫 댓글을 남겨보세요.';
+    commentList.append(empty);
+    return;
+  }
+  comments.forEach((comment) => {
+    const item = document.createElement('li');
+    item.className = 'comment-item';
+    const header = document.createElement('div');
+    header.className = 'comment-item-header';
+    const author = document.createElement('strong');
+    author.textContent = comment.author;
+    const date = document.createElement('time');
+    date.textContent = formatCommentDate(comment.created_at);
+    const body = document.createElement('p');
+    body.textContent = comment.body;
+    header.append(author, date);
+    item.append(header, body);
+    if (comment.local) {
+      const remove = document.createElement('button');
+      remove.className = 'comment-delete';
+      remove.type = 'button';
+      remove.textContent = '삭제';
+      remove.setAttribute('aria-label', `${comment.author} 댓글 삭제`);
+      remove.addEventListener('click', () => {
+        const next = readLocalComments().filter((entry) => entry.id !== comment.id);
+        localStorage.setItem(LOCAL_COMMENTS_KEY, JSON.stringify(next));
+        renderComments(next);
+      });
+      item.append(remove);
+    }
+    commentList.append(item);
+  });
+};
+
+renderComments(readLocalComments());
+commentForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+  const formData = new FormData(commentForm);
+  const author = String(formData.get('author') || '').trim();
+  const body = String(formData.get('body') || '').trim();
+  if (!author || author.length > 40 || !body || body.length > 1000) {
+    commentStatus.textContent = '닉네임은 1~40자, 댓글은 1~1,000자로 입력해 주세요.';
+    return;
+  }
+  const comments = readLocalComments();
+  comments.unshift({
+    id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    author,
+    body,
+    created_at: new Date().toISOString(),
+    local: true,
+  });
+  try {
+    localStorage.setItem(LOCAL_COMMENTS_KEY, JSON.stringify(comments.slice(0, 100)));
+    renderComments(readLocalComments());
+    commentForm.reset();
+    commentStatus.textContent = '이 브라우저에 댓글을 저장했습니다. 다른 방문자에게는 보이지 않습니다.';
+  } catch {
+    commentStatus.textContent = '브라우저 저장 공간에 댓글을 저장하지 못했습니다.';
+  }
+});
 
 const copyTextFallback = (text) => {
   const temporaryInput = document.createElement('textarea');

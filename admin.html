@@ -67,10 +67,16 @@
     </div>
     <div id="status" role="status" aria-live="polite"></div>
   </form>
+  <section class="comments-admin" aria-labelledby="comments-heading">
+    <h2 id="comments-heading">이 PC의 SQLite 댓글</h2>
+    <p>이 댓글은 로컬 SQLite 데이터베이스에 저장된 댓글입니다. 공개 방문자가 남긴 브라우저 로컬 댓글은 여기에 나타나지 않습니다.</p>
+    <ul id="admin-comments" class="admin-comments"></ul>
+  </section>
 </main>
 <script>
 const form = document.querySelector('#content-form');
 const status = document.querySelector('#status');
+const adminComments = document.querySelector('#admin-comments');
 const works = () => [...document.querySelectorAll('.work')].map((card, index) => ({
   id: card.dataset.work,
   kind: card.querySelector('[data-key="kind"]').value,
@@ -94,9 +100,29 @@ const populate = (data) => {
     for (const key of ['kind', 'platform', 'title', 'url']) card.querySelector(`[data-key="${key}"]`).value = work[key];
   }
 };
+const loadComments = async () => {
+  const response = await fetch('/api/comments');
+  const comments = await response.json();
+  adminComments.replaceChildren();
+  if (!comments.length) {
+    const empty = document.createElement('li'); empty.textContent = '저장된 댓글이 없습니다.'; adminComments.append(empty); return;
+  }
+  comments.forEach((comment) => {
+    const item = document.createElement('li');
+    const heading = document.createElement('strong'); heading.textContent = `${comment.author} · ${comment.created_at}`;
+    const body = document.createElement('p'); body.textContent = comment.body;
+    const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = '삭제';
+    remove.addEventListener('click', async () => {
+      const result = await fetch(`/api/comments/${comment.id}`, {method:'DELETE'});
+      if (result.ok) await loadComments();
+    });
+    item.append(heading,body,remove); adminComments.append(item);
+  });
+};
 fetch('/api/content').then((response) => response.json()).then(populate).catch(() => {
   status.textContent = '로컬 API에서 내용을 불러오지 못했습니다. start_admin.bat으로 관리 도구를 실행했는지 확인해 주세요.';
 });
+loadComments().catch(() => { adminComments.textContent = '댓글을 불러오지 못했습니다.'; });
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
   const response = await fetch('/api/content', { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(content()) });

@@ -65,6 +65,12 @@ def initialize_db() -> None:
                 sort_order INTEGER NOT NULL DEFAULT 0,
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
+            CREATE TABLE IF NOT EXISTS comments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                author TEXT NOT NULL CHECK(length(author) BETWEEN 1 AND 40),
+                body TEXT NOT NULL CHECK(length(body) BETWEEN 1 AND 1000),
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
             """
         )
         profile = DEFAULT_CONTENT["profile"]
@@ -172,6 +178,13 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, body, "application/json; charset=utf-8")
         elif path == "/api/database":
             self._send(200, DB_PATH.read_bytes(), "application/octet-stream")
+        elif path == "/api/comments":
+            with connect_db() as db:
+                rows = db.execute(
+                    "SELECT id, author, body, created_at FROM comments ORDER BY id DESC LIMIT 100"
+                ).fetchall()
+            body = json.dumps([dict(row) for row in rows], ensure_ascii=False).encode("utf-8")
+            self._send(200, body, "application/json; charset=utf-8")
         else:
             self._send(404, b"Not found", "text/plain; charset=utf-8")
 
@@ -189,6 +202,45 @@ class Handler(BaseHTTPRequestHandler):
         except (ValueError, KeyError, TypeError, json.JSONDecodeError) as error:
             body = json.dumps({"ok": False, "error": str(error)}, ensure_ascii=False).encode("utf-8")
             self._send(400, body, "application/json; charset=utf-8")
+
+    def do_POST(self) -> None:  # noqa: N802
+        if urlparse(self.path).path != "/api/comments":
+            self._send(404, b"Not found", "text/plain; charset=utf-8")
+            return
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+            if length > 10_000:
+                raise ValueError("댓글 요청이 너무 큽니다.")
+            data = json.loads(self.rfile.read(length).decode("utf-8"))
+            author = str(data.get("author", "")).strip()
+            body = str(data.get("body", "")).strip()
+            if not author or len(author) > 40:
+                raise ValueError("닉네임은 1~40자로 입력해 주세요.")
+            if not body or len(body) > 1000:
+                raise ValueError("댓글은 1~1000자로 입력해 주세요.")
+            with connect_db() as db:
+                cursor = db.execute("INSERT INTO comments (author, body) VALUES (?, ?)", (author, body))
+                row = db.execute(
+                    "SELECT id, author, body, created_at FROM comments WHERE id=?", (cursor.lastrowid,)
+                ).fetchone()
+            response = json.dumps(dict(row), ensure_ascii=False).encode("utf-8")
+            self._send(201, response, "application/json; charset=utf-8")
+        except (ValueError, TypeError, json.JSONDecodeError) as error:
+            response = json.dumps({"error": str(error)}, ensure_ascii=False).encode("utf-8")
+            self._send(400, response, "application/json; charset=utf-8")
+
+    def do_DELETE(self) -> None:  # noqa: N802
+        path = urlparse(self.path).path
+        if not path.startswith("/api/comments/"):
+            self._send(404, b"Not found", "text/plain; charset=utf-8")
+            return
+        try:
+            comment_id = int(path.rsplit("/", 1)[-1])
+            with connect_db() as db:
+                cursor = db.execute("DELETE FROM comments WHERE id=?", (comment_id,))
+            self._send(200 if cursor.rowcount else 404, b'{"ok":true}', "application/json; charset=utf-8")
+        except ValueError:
+            self._send(400, b'{"error":"Invalid comment id"}', "application/json; charset=utf-8")
 
     def log_message(self, fmt: str, *args) -> None:
         print(f"[local admin] {self.address_string()} - {fmt % args}")
