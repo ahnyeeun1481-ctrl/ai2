@@ -9,6 +9,7 @@ const commentList = document.querySelector('#comment-list');
 const commentCount = document.querySelector('#comment-count');
 const commentStatus = document.querySelector('#comment-status');
 const LOCAL_COMMENTS_KEY = 'portfolio-guestbook-comments';
+const API_BASE = '';
 
 fetch('site-content.json')
   .then((response) => {
@@ -18,18 +19,49 @@ fetch('site-content.json')
   .then(({ profile, works }) => {
     document.querySelectorAll('[data-content]').forEach((element) => {
       const key = element.dataset.content;
-      if (profile[key]) element.textContent = profile[key];
+      const value = typeof profile[key] === 'string' ? profile[key].trim() : '';
+      const isPlaceholder = !value || /^\[.*\]$/.test(value);
+      if (key === 'name' && element.classList.contains('hero-name')) {
+        element.textContent = isPlaceholder ? '' : value;
+        element.hidden = isPlaceholder;
+        const suffix = document.querySelector('.hero-name-suffix');
+        if (suffix) suffix.hidden = isPlaceholder;
+      } else if (['name', 'field', 'focus'].includes(key)) {
+        const row = document.querySelector(`[data-profile-row="${key}"]`);
+        if (row) {
+          row.hidden = isPlaceholder;
+          if (!isPlaceholder) row.querySelector('[data-content]').textContent = value;
+        }
+      } else if (!isPlaceholder) {
+        element.textContent = value;
+      }
     });
+    const email = typeof profile.email === 'string' ? profile.email.trim() : '';
+    const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && !/example\.(com|org|net)$/i.test(email);
+    if (validEmail) {
+      const emailLink = document.querySelector('.contact-email-link');
+      emailLink.href = `mailto:${email}`;
+      emailLink.hidden = false;
+      copyEmailButton.dataset.email = email;
+      copyEmailButton.hidden = false;
+      document.querySelector('.contact-email-not-set').hidden = true;
+    }
     document.querySelectorAll('[data-work-link]').forEach((link) => {
       const work = works.find((item) => item.id === link.dataset.workLink);
       if (!work) return;
       link.href = work.url;
       link.querySelector(`[data-work-title="${work.id}"]`).textContent = work.title;
       link.querySelector(`[data-work-platform="${work.id}"]`).textContent = `${work.platform} · ${work.kind.toUpperCase()}`;
+      const spokenPlatform = work.platform.toLowerCase() === 'goodnovel' ? 'GoodNovel' : work.platform;
+      link.setAttribute('aria-label', `${spokenPlatform} ${work.title} (새 창으로 열림)`);
     });
   })
   .catch(() => {
-    // Keep the baked-in copy when no exported SQLite content is published.
+    document.querySelectorAll('[data-profile-row]').forEach((row) => { row.hidden = true; });
+    const heroName = document.querySelector('.hero-name');
+    if (heroName) heroName.hidden = true;
+    const suffix = document.querySelector('.hero-name-suffix');
+    if (suffix) suffix.hidden = true;
   });
 
 const readLocalComments = () => {
@@ -69,6 +101,27 @@ const renderComments = (comments) => {
     body.textContent = comment.body;
     header.append(author, date);
     item.append(header, body);
+    if (comment.shared) {
+      const report = document.createElement('button');
+      report.className = 'comment-report';
+      report.type = 'button';
+      report.textContent = '신고';
+      report.setAttribute('aria-label', `${comment.author} 댓글 신고`);
+      report.addEventListener('click', async () => {
+        report.disabled = true;
+        try {
+          const response = await fetch(`${API_BASE}/api/comments/${comment.id}/report`, { method: 'POST' });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || '신고하지 못했습니다.');
+          commentStatus.textContent = '신고가 접수됐습니다. 반복 신고 댓글은 자동으로 숨김 처리됩니다.';
+          await loadSharedComments();
+        } catch (error) {
+          report.disabled = false;
+          commentStatus.textContent = error.message || '신고하지 못했습니다.';
+        }
+      });
+      item.append(report);
+    }
     if (comment.local) {
       const remove = document.createElement('button');
       remove.className = 'comment-delete';
@@ -86,15 +139,60 @@ const renderComments = (comments) => {
   });
 };
 
-renderComments(readLocalComments());
-commentForm.addEventListener('submit', (event) => {
+const loadSharedComments = async () => {
+  try {
+    const response = await fetch(`${API_BASE}/api/comments`);
+    if (!response.ok) throw new Error('Shared comments are unavailable');
+    const comments = await response.json();
+    renderComments(comments.map((comment) => ({ ...comment, shared: true })));
+    document.querySelector('.guestbook-notice').textContent = '댓글은 모든 방문자와 공유됩니다. 예의를 지켜 작성해 주세요.';
+    return { available: true, comments };
+  } catch {
+    renderComments(readLocalComments());
+    document.querySelector('.guestbook-notice').textContent = '공유 댓글 서비스에 연결되지 않았습니다. 지금 남기는 댓글은 이 브라우저에만 저장되며 다른 방문자와 공유되지 않습니다.';
+    return { available: false, comments: [] };
+  }
+};
+
+let sharedCommentsAvailable = false;
+let guestbookReady = false;
+commentForm.querySelector('button[type="submit"]').disabled = true;
+loadSharedComments().then((result) => {
+  sharedCommentsAvailable = result.available;
+  guestbookReady = true;
+  commentForm.querySelector('button[type="submit"]').disabled = false;
+});
+commentForm.addEventListener('submit', async (event) => {
   event.preventDefault();
+  if (!guestbookReady) {
+    commentStatus.textContent = '댓글 저장 방식을 확인하고 있습니다. 잠시 후 다시 시도해 주세요.';
+    return;
+  }
   const formData = new FormData(commentForm);
   const author = String(formData.get('author') || '').trim();
   const body = String(formData.get('body') || '').trim();
   if (!author || author.length > 40 || !body || body.length > 1000) {
     commentStatus.textContent = '닉네임은 1~40자, 댓글은 1~1,000자로 입력해 주세요.';
     return;
+  }
+  if (sharedCommentsAvailable) {
+    try {
+      const response = await fetch(`${API_BASE}/api/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ author, body }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || '댓글을 저장하지 못했습니다.');
+      commentForm.reset();
+      commentStatus.textContent = '댓글을 모두가 볼 수 있도록 게시했습니다.';
+      const loaded = await loadSharedComments();
+      if (!loaded.available) throw new Error('댓글 저장은 완료됐지만 목록을 불러오지 못했습니다. 새로고침해 주세요.');
+      return;
+    } catch (error) {
+      commentStatus.textContent = error.message || '댓글을 게시하지 못했습니다.';
+      return;
+    }
   }
   const comments = readLocalComments();
   comments.unshift({
