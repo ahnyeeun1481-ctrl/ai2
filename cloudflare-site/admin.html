@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="googlebot" content="noindex,nofollow">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="포트폴리오 관리자 로그인">
+  <meta property="og:description" content="비공개 관리자 페이지입니다. 로그인한 사이트 관리자만 사용할 수 있습니다.">
+  <meta property="og:image" content="https://ahnyeeun-portfolio.ahnyeeun1481.workers.dev/og-image.png">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="포트폴리오 관리자 로그인">
+  <meta name="twitter:description" content="비공개 관리자 페이지입니다. 로그인한 사이트 관리자만 사용할 수 있습니다.">
+  <title>사이트 관리자 로그인</title>
+  <style>
+    :root{color-scheme:dark;--bg:#101014;--panel:#19191f;--text:#f6f3ef;--muted:#a5a2aa;--red:#fa3448;--yellow:#ffd84d;--line:rgba(255,255,255,.13)}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 "Segoe UI","Noto Sans KR",sans-serif}main{width:min(920px,92%);margin:48px auto 90px}h1,h2{margin-top:0}h1{font-size:clamp(28px,5vw,40px)}h2{font-size:21px;margin-bottom:12px}.muted{color:var(--muted);font-size:13px}.panel{padding:24px;border:1px solid var(--line);background:var(--panel);margin-top:20px}.login{width:min(520px,100%);margin:10vh auto}.notice{padding:13px 15px;border-left:3px solid var(--yellow);background:#211f19;color:#eee4c3;font-size:13px}label{display:grid;gap:7px;font-size:13px;margin:14px 0}input,textarea{width:100%;padding:11px 12px;border:1px solid #393840;border-radius:5px;background:#121217;color:var(--text);font:inherit}textarea{min-height:94px;resize:vertical}button{padding:10px 14px;border:1px solid #4b4852;border-radius:4px;background:#24232a;color:var(--text);cursor:pointer;font:inherit}button.primary{background:var(--red);border-color:var(--red);font-weight:700}button:disabled{opacity:.6;cursor:wait}.actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:12px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 14px}.work{padding:14px;border:1px solid var(--line);margin:12px 0}.status{min-height:1.5em;color:var(--yellow);font-size:12px}.comment{padding:15px 0;border-bottom:1px solid var(--line)}.comment p{white-space:pre-wrap;overflow-wrap:anywhere}.comment small{color:var(--muted)}[hidden]{display:none!important}
+    @media(max-width:620px){main{margin:28px auto}.grid{grid-template-columns:1fr}.panel{padding:18px}}
+  </style>
+</head>
+<body>
+<main>
+  <h1>포트폴리오 관리자</h1>
+  <div class="notice">관리자 토큰은 서버에서 검증하며 이 브라우저 탭의 sessionStorage에만 보관됩니다. 공유 컴퓨터에서는 사용 후 로그아웃하세요. 이 URL은 비밀 링크가 아닙니다. 접근 권한은 토큰으로 보호됩니다.</div>
+  <section class="panel login" id="login-panel">
+    <h2>관리자 로그인</h2>
+    <p class="muted">Cloudflare Worker Secret <code>ADMIN_TOKEN</code>으로 설정한 관리자 토큰을 입력하세요. 보안을 위해 토큰은 이 화면에서 발급하거나 다시 보여주지 않습니다.</p>
+    <form id="login-form"><label>관리자 토큰<input id="admin-token" type="password" autocomplete="current-password" required></label><button class="primary" type="submit">로그인</button><p class="status" id="login-status" role="status" aria-live="polite"></p></form>
+  </section>
+  <div id="admin-app" hidden>
+    <div class="actions"><button id="logout">로그아웃</button><button id="reload">다시 불러오기</button></div>
+    <section class="panel"><h2>프로필 및 작품 콘텐츠</h2><p class="muted">이 설정은 D1에 저장됩니다. 현재 공개 페이지는 정적 <code>site-content.json</code>을 사용하므로, 아래 D1 저장만으로 공개 프로필은 바뀌지 않습니다. 공개 반영 전에는 사이트 JSON 업데이트와 Worker 배포가 별도로 필요합니다.</p>
+      <form id="content-form">
+        <div class="grid"><label>이름<input name="name"></label><label>전공·관심 분야<input name="field"></label><label>관심 기술·연구 주제<input name="focus"></label><label>공개 이메일<input name="email" type="email"></label></div>
+        <label>공학 소개 1<textarea name="about_paragraph_1"></textarea></label><label>공학 소개 2<textarea name="about_paragraph_2"></textarea></label><label>작가 소개 1<textarea name="writing_paragraph_1"></textarea></label><label>작가 소개 2<textarea name="writing_paragraph_2"></textarea></label>
+        <h3>웹소설</h3><div class="work" data-work="webnovels"><div class="grid"><label>분류<input data-key="kind"></label><label>플랫폼<input data-key="platform"></label><label>제목<input data-key="title"></label><label>URL<input data-key="url" type="url"></label></div></div>
+        <h3>전자책</h3><div class="work" data-work="ebooks"><div class="grid"><label>분류<input data-key="kind"></label><label>플랫폼<input data-key="platform"></label><label>제목<input data-key="title"></label><label>URL<input data-key="url" type="url"></label></div></div>
+        <button class="primary" type="submit">D1에 저장</button><p class="status" id="content-status" role="status" aria-live="polite"></p>
+      </form>
+    </section>
+    <section class="panel"><h2>공개 방명록 댓글 (Cloudflare D1)</h2><p class="muted">인증된 관리자만 원격 D1 댓글을 숨김·복구·영구 삭제할 수 있습니다. 3회 신고된 댓글은 방문자 목록에서 자동 숨김됩니다.</p><div id="comments"></div></section>
+  </div>
+</main>
+<script>
+const TOKEN_KEY='portfolio-admin-token';
+const loginPanel=document.querySelector('#login-panel');
+const adminApp=document.querySelector('#admin-app');
+const loginStatus=document.querySelector('#login-status');
+const contentStatus=document.querySelector('#content-status');
+const request=async(path,options={})=>{
+  const token=sessionStorage.getItem(TOKEN_KEY);
+  const headers=new Headers(options.headers||{});
+  headers.set('Authorization',`Bearer ${token||''}`);
+  if(options.body)headers.set('Content-Type','application/json');
+  const response=await fetch(`/api/admin${path}`,{...options,headers});
+  const data=await response.json().catch(()=>({}));
+  if(response.status===401){sessionStorage.removeItem(TOKEN_KEY);showLogin('로그인이 만료됐습니다. 다시 로그인해 주세요.');throw new Error('인증이 필요합니다.');}
+  if(!response.ok)throw new Error(data.error||`요청 실패 (${response.status})`);
+  return data;
+};
+function showLogin(message=''){loginPanel.hidden=false;adminApp.hidden=true;loginStatus.textContent=message;}
+function showAdmin(){loginPanel.hidden=true;adminApp.hidden=false;}
+function buildContent(){
+  const profile=Object.fromEntries(new FormData(document.querySelector('#content-form')).entries());
+  const works=[...document.querySelectorAll('.work')].map((card,index)=>({id:card.dataset.work,...Object.fromEntries([...card.querySelectorAll('[data-key]')].map(input=>[input.dataset.key,input.value])),sort_order:index+1}));
+  return {profile,works};
+}
+function populate(data){
+  const form=document.querySelector('#content-form');
+  for(const [key,value] of Object.entries(data.profile||{})){const field=form.elements.namedItem(key);if(field)field.value=value??'';}
+  for(const work of data.works||[]){const card=document.querySelector(`[data-work="${CSS.escape(work.id)}"]`);if(!card)continue;for(const input of card.querySelectorAll('[data-key]'))input.value=work[input.dataset.key]??'';}
+}
+async function loadComments(){
+  const host=document.querySelector('#comments');host.replaceChildren();
+  const comments=await request('/comments');
+  if(!comments.length){host.textContent='댓글이 없습니다.';return;}
+  for(const comment of comments){
+    const article=document.createElement('article');article.className='comment';
+    const heading=document.createElement('strong');heading.textContent=`${comment.author} · ${comment.created_at}`;
+    const state=document.createElement('small');state.textContent=comment.is_hidden?' · 숨김':' · 공개';
+    const body=document.createElement('p');body.textContent=comment.body;
+    const actions=document.createElement('div');actions.className='actions';
+    const toggle=document.createElement('button');toggle.type='button';toggle.textContent=comment.is_hidden?'복구':'숨김';toggle.addEventListener('click',async()=>{await request(`/comments/${comment.id}/${comment.is_hidden?'restore':'hide'}`,{method:'POST'});await loadComments();});
+    const remove=document.createElement('button');remove.type='button';remove.textContent='영구 삭제';remove.addEventListener('click',async()=>{if(!confirm('이 댓글을 영구 삭제할까요?'))return;await request(`/comments/${comment.id}/delete`,{method:'POST'});await loadComments();});
+    actions.append(toggle,remove);article.append(heading,state,body,actions);host.append(article);
+  }
+}
+async function loadAdmin(){try{const content=await request('/content');if(content)populate(content);await loadComments();showAdmin();}catch(error){if(sessionStorage.getItem(TOKEN_KEY))contentStatus.textContent=error.message;}}
+document.querySelector('#login-form').addEventListener('submit',async event=>{
+  event.preventDefault();const token=document.querySelector('#admin-token').value.trim();
+  try{const response=await fetch('/api/admin/session',{method:'POST',headers:{Authorization:`Bearer ${token}`}});if(!response.ok)throw new Error('토큰이 올바르지 않습니다.');sessionStorage.setItem(TOKEN_KEY,token);document.querySelector('#admin-token').value='';await loadAdmin();}
+  catch(error){sessionStorage.removeItem(TOKEN_KEY);showLogin(error.message);}
+});
+document.querySelector('#content-form').addEventListener('submit',async event=>{event.preventDefault();try{await request('/content',{method:'PUT',body:JSON.stringify(buildContent())});contentStatus.textContent='D1에 저장했습니다. 공개 정적 콘텐츠는 별도 배포가 필요합니다.';}catch(error){contentStatus.textContent=error.message;}});
+document.querySelector('#logout').addEventListener('click',()=>{sessionStorage.removeItem(TOKEN_KEY);showLogin('로그아웃했습니다.');});
+document.querySelector('#reload').addEventListener('click',loadAdmin);
+if(sessionStorage.getItem(TOKEN_KEY))loadAdmin();
+</script>
+</body>
+</html>
