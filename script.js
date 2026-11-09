@@ -10,6 +10,34 @@ const commentCount = document.querySelector('#comment-count');
 const commentStatus = document.querySelector('#comment-status');
 const LOCAL_COMMENTS_KEY = 'portfolio-guestbook-comments';
 const API_BASE = '';
+const PAGE_SIZE = 5;
+let currentComments = [];
+let visibleCount = PAGE_SIZE;
+const commentPagination = document.querySelector('#comment-pagination');
+const loadMoreButton = document.querySelector('#load-more-comments');
+
+const showCommentSkeletons = (count = 3) => {
+  commentList.replaceChildren();
+  if (commentPagination) commentPagination.hidden = true;
+  for (let i = 0; i < count; i++) {
+    const item = document.createElement('li');
+    item.className = 'comment-item comment-skeleton';
+    item.setAttribute('aria-hidden', 'true');
+    const header = document.createElement('div');
+    header.className = 'skeleton-header';
+    const name = document.createElement('span');
+    name.className = 'skeleton-name';
+    const date = document.createElement('span');
+    date.className = 'skeleton-date';
+    header.append(name, date);
+    const line1 = document.createElement('div');
+    line1.className = 'skeleton-line skeleton-body-1';
+    const line2 = document.createElement('div');
+    line2.className = 'skeleton-line skeleton-body-2';
+    item.append(header, line1, line2);
+    commentList.append(item);
+  }
+};
 
 fetch('site-content.json')
   .then((response) => {
@@ -78,17 +106,22 @@ const formatCommentDate = (value) => {
   return Number.isNaN(date.getTime()) ? '' : new Intl.DateTimeFormat('ko-KR', { dateStyle: 'medium' }).format(date);
 };
 
-const renderComments = (comments) => {
+const renderComments = (comments = currentComments) => {
+  currentComments = Array.isArray(comments) ? comments : [];
   commentList.replaceChildren();
-  commentCount.textContent = String(comments.length);
-  if (!comments.length) {
+  commentCount.textContent = String(currentComments.length);
+
+  if (!currentComments.length) {
     const empty = document.createElement('li');
     empty.className = 'comment-empty';
     empty.textContent = '아직 댓글이 없습니다. 첫 댓글을 남겨보세요.';
     commentList.append(empty);
+    if (commentPagination) commentPagination.hidden = true;
     return;
   }
-  comments.forEach((comment) => {
+
+  const visibleSlice = currentComments.slice(0, visibleCount);
+  visibleSlice.forEach((comment) => {
     const item = document.createElement('li');
     item.className = 'comment-item';
     const header = document.createElement('div');
@@ -137,7 +170,25 @@ const renderComments = (comments) => {
     }
     commentList.append(item);
   });
+
+  if (commentPagination && loadMoreButton) {
+    const remaining = currentComments.length - visibleCount;
+    if (remaining > 0) {
+      commentPagination.hidden = false;
+      const countEl = loadMoreButton.querySelector('.more-count');
+      if (countEl) countEl.textContent = `(${remaining}개 더보기)`;
+    } else {
+      commentPagination.hidden = true;
+    }
+  }
 };
+
+if (loadMoreButton) {
+  loadMoreButton.addEventListener('click', () => {
+    visibleCount += PAGE_SIZE;
+    renderComments();
+  });
+}
 
 const loadSharedComments = async () => {
   try {
@@ -157,6 +208,7 @@ const loadSharedComments = async () => {
 let sharedCommentsAvailable = false;
 let guestbookReady = false;
 commentForm.querySelector('button[type="submit"]').disabled = true;
+showCommentSkeletons(3);
 loadSharedComments().then((result) => {
   sharedCommentsAvailable = result.available;
   guestbookReady = true;

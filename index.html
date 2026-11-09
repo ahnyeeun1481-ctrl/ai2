@@ -42,7 +42,7 @@
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <script src="script.js" defer></script>
 </head>
@@ -190,6 +190,11 @@
         </form>
         <div class="comment-list-heading"><h3>방명록</h3><span id="comment-count">0</span></div>
         <ul class="comment-list" id="comment-list" aria-live="polite"></ul>
+        <div class="comment-pagination" id="comment-pagination" hidden>
+          <button type="button" class="load-more-comments-button" id="load-more-comments">
+            댓글 더보기 <span class="more-count"></span>
+          </button>
+        </div>
       </div>
     </section>
   </main>
