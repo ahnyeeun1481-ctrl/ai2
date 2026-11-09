@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ahnyeeun-portfolio",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-04",
+  "workers_dev": true,
+  "assets": {
+    "directory": "../cloudflare-site",
+    "binding": "ASSETS",
+    "not_found_handling": "404-page",
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "portfolio-comments",
+      "database_id": "0548b30b-79ae-4021-b588-dc5864e0cb1e",
+      "migrations_dir": "migrations"
+    }
+  ]
+}

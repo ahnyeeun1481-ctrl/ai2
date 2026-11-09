@@ -1,3 +1,6 @@
+const googleFontStyles = document.querySelector('#google-font-styles');
+if (googleFontStyles) googleFontStyles.media = 'all';
+
 const menuButton = document.querySelector('.menu-toggle');
 const navigation = document.querySelector('.main-nav');
 const progressBar = document.querySelector('.reading-progress-bar');
@@ -8,10 +11,95 @@ const commentForm = document.querySelector('#comment-form');
 const commentList = document.querySelector('#comment-list');
 const commentCount = document.querySelector('#comment-count');
 const commentStatus = document.querySelector('#comment-status');
+const loadMoreButton = document.querySelector('#comment-load-more');
 const LOCAL_COMMENTS_KEY = 'portfolio-guestbook-comments';
-const API_BASE = '';
+const API_BASE = location.hostname === 'ahnyeeun1481-ctrl.github.io'
+  ? 'https://ahnyeeun-portfolio.ahnyeeun1481.workers.dev'
+  : '';
+const COMMENT_PREVIEW_LINES = 8;
+const COMMENT_PAGE_SIZE = 5;
+const TURNSTILE_SITE_KEY = '0x4AAAAAAF5wi9Nzsemm3eZQ';
+const ANALYTICS_CONSENT_KEY = 'portfolio-analytics-consent';
+const GTM_CONTAINER_ID = 'GTM-5NLLTJC2';
+let turnstileWidgetId = null;
+let turnstileToken = '';
+const getStoredAnalyticsConsent = () => {
+  try { return localStorage.getItem(ANALYTICS_CONSENT_KEY) === 'granted'; }
+  catch { return false; }
+};
+let analyticsConsent = getStoredAnalyticsConsent();
 
-fetch('site-content.json')
+const loadGoogleTagManager = () => {
+  if (document.querySelector('[data-gtm-loader]')) return;
+  window.dataLayer = window.dataLayer || [];
+  window.dataLayer.push({ 'gtm.start': Date.now(), event: 'gtm.js' });
+  const script = document.createElement('script');
+  script.async = true;
+  script.dataset.gtmLoader = 'true';
+  script.src = `https://www.googletagmanager.com/gtm.js?id=${GTM_CONTAINER_ID}`;
+  document.head.append(script);
+};
+
+const updateAnalyticsConsent = (granted) => {
+  analyticsConsent = granted;
+  window.gtag?.('consent', 'update', {
+    analytics_storage: granted ? 'granted' : 'denied',
+    ad_storage: 'denied',
+    ad_user_data: 'denied',
+    ad_personalization: 'denied',
+  });
+  try { localStorage.setItem(ANALYTICS_CONSENT_KEY, granted ? 'granted' : 'denied'); }
+  catch { /* Consent still applies for this page view when storage is unavailable. */ }
+  document.querySelector('#consent-banner').hidden = true;
+  if (granted) loadGoogleTagManager();
+};
+
+const consentBanner = document.querySelector('#consent-banner');
+let hasStoredAnalyticsConsent = false;
+try { hasStoredAnalyticsConsent = localStorage.getItem(ANALYTICS_CONSENT_KEY) !== null; }
+catch { hasStoredAnalyticsConsent = false; }
+if (!hasStoredAnalyticsConsent) consentBanner.hidden = false;
+if (analyticsConsent) {
+  window.gtag?.('consent', 'update', { analytics_storage: 'granted' });
+  loadGoogleTagManager();
+}
+document.querySelector('#consent-accept').addEventListener('click', () => updateAnalyticsConsent(true));
+document.querySelector('#consent-reject').addEventListener('click', () => updateAnalyticsConsent(false));
+document.querySelector('#consent-settings-link').addEventListener('click', () => { consentBanner.hidden = false; });
+let turnstileRenderAttempts = 0;
+
+const updateCommentSubmitState = () => {
+  const button = commentForm.querySelector('button[type="submit"]');
+  button.disabled = !guestbookReady || !turnstileToken;
+};
+
+const renderTurnstile = () => {
+  if (!window.turnstile || turnstileWidgetId !== null) return;
+  turnstileWidgetId = window.turnstile.render('#comment-turnstile', {
+    sitekey: TURNSTILE_SITE_KEY,
+    theme: 'dark',
+    callback: (token) => { turnstileToken = token; updateCommentSubmitState(); },
+    'expired-callback': () => { turnstileToken = ''; updateCommentSubmitState(); },
+    'error-callback': () => {
+      turnstileToken = '';
+      updateCommentSubmitState();
+      commentStatus.textContent = '스팸 방지 확인을 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.';
+    },
+  });
+};
+
+const waitForTurnstile = () => {
+  renderTurnstile();
+  if (turnstileWidgetId === null && turnstileRenderAttempts < 20) {
+    turnstileRenderAttempts += 1;
+    window.setTimeout(waitForTurnstile, 250);
+  } else if (turnstileWidgetId === null) {
+    commentStatus.textContent = '스팸 방지 확인을 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.';
+  }
+};
+waitForTurnstile();
+
+fetch('/site-content.json')
   .then((response) => {
     if (!response.ok) throw new Error('No exported portfolio content');
     return response.json();
@@ -64,6 +152,8 @@ fetch('site-content.json')
     if (suffix) suffix.hidden = true;
   });
 
+// portfolio_work_click is sent by the GTM link-click trigger (GTM-5NLLTJC2) to avoid double counting.
+
 const readLocalComments = () => {
   try {
     const comments = JSON.parse(localStorage.getItem(LOCAL_COMMENTS_KEY) || '[]');
@@ -80,6 +170,8 @@ const formatCommentDate = (value) => {
 
 const renderComments = (comments) => {
   commentList.replaceChildren();
+  commentList.classList.remove('is-loading');
+  commentList.setAttribute('aria-busy', 'false');
   commentCount.textContent = String(comments.length);
   if (!comments.length) {
     const empty = document.createElement('li');
@@ -101,6 +193,21 @@ const renderComments = (comments) => {
     body.textContent = comment.body;
     header.append(author, date);
     item.append(header, body);
+    if (comment.body.split('\n').length > COMMENT_PREVIEW_LINES) {
+      body.classList.add('comment-body-collapsed');
+      const toggle = document.createElement('button');
+      toggle.className = 'comment-expand';
+      toggle.type = 'button';
+      toggle.textContent = '더 보기';
+      toggle.setAttribute('aria-expanded', 'false');
+      toggle.addEventListener('click', () => {
+        const expanded = toggle.getAttribute('aria-expanded') === 'true';
+        toggle.setAttribute('aria-expanded', String(!expanded));
+        toggle.textContent = expanded ? '더 보기' : '접기';
+        body.classList.toggle('comment-body-collapsed', expanded);
+      });
+      item.append(toggle);
+    }
     if (comment.shared) {
       const report = document.createElement('button');
       report.className = 'comment-report';
@@ -139,28 +246,67 @@ const renderComments = (comments) => {
   });
 };
 
-const loadSharedComments = async () => {
+const showSkeletons = () => {
+  commentList.classList.add('is-loading');
+  commentList.setAttribute('aria-busy', 'true');
+  commentList.replaceChildren();
+  for (let index = 0; index < 3; index += 1) {
+    const skeleton = document.createElement('li');
+    skeleton.className = 'comment-skeleton';
+    skeleton.setAttribute('aria-hidden', 'true');
+    skeleton.innerHTML = '<span class="skeleton-line skeleton-author"></span><span class="skeleton-line skeleton-body"></span><span class="skeleton-line skeleton-body short"></span>';
+    commentList.append(skeleton);
+  }
+};
+const finishCommentLoading = () => {
+  commentList.classList.remove('is-loading');
+  commentList.setAttribute('aria-busy', 'false');
+};
+let sharedCommentsAvailable = false;
+let guestbookReady = false;
+let sharedComments = [];
+let nextCommentOffset = 0;
+let hasMoreSharedComments = false;
+commentForm.querySelector('button[type="submit"]').disabled = true;
+
+const loadSharedComments = async ({ append = false } = {}) => {
   try {
-    const response = await fetch(`${API_BASE}/api/comments`);
+    const offset = append ? nextCommentOffset : 0;
+    const response = await fetch(`${API_BASE}/api/comments?limit=${COMMENT_PAGE_SIZE}&offset=${offset}`);
     if (!response.ok) throw new Error('Shared comments are unavailable');
-    const comments = await response.json();
-    renderComments(comments.map((comment) => ({ ...comment, shared: true })));
-    document.querySelector('.guestbook-notice').textContent = '댓글은 모든 방문자와 공유됩니다. 예의를 지켜 작성해 주세요.';
-    return { available: true, comments };
+    const page = await response.json();
+    sharedComments = append ? [...sharedComments, ...page.items] : page.items;
+    nextCommentOffset = page.nextOffset;
+    hasMoreSharedComments = page.hasMore;
+    finishCommentLoading();
+    renderComments(sharedComments.map((comment) => ({ ...comment, shared: true })));
+    loadMoreButton.hidden = !hasMoreSharedComments;
+    document.querySelector('.guestbook-notice').textContent = '댓글은 모든 방문자에게 공개됩니다. 개인정보나 민감한 내용은 작성하지 마세요.';
+    return { available: true, comments: sharedComments };
   } catch {
+    sharedComments = [];
+    hasMoreSharedComments = false;
+    loadMoreButton.hidden = true;
+    finishCommentLoading();
     renderComments(readLocalComments());
-    document.querySelector('.guestbook-notice').textContent = '공유 댓글 서비스에 연결되지 않았습니다. 지금 남기는 댓글은 이 브라우저에만 저장되며 다른 방문자와 공유되지 않습니다.';
+    document.querySelector('.guestbook-notice').textContent = '공유 댓글 서버에 연결하지 못했습니다. 지금 쓰는 댓글은 이 브라우저에만 저장되어 다른 방문자에게는 보이지 않습니다.';
     return { available: false, comments: [] };
   }
 };
 
-let sharedCommentsAvailable = false;
-let guestbookReady = false;
-commentForm.querySelector('button[type="submit"]').disabled = true;
+loadMoreButton.addEventListener('click', async () => {
+  if (!hasMoreSharedComments) return;
+  loadMoreButton.disabled = true;
+  loadMoreButton.textContent = '불러오는 중';
+  await loadSharedComments({ append: true });
+  loadMoreButton.disabled = false;
+  loadMoreButton.textContent = '댓글 더보기';
+});
+
 loadSharedComments().then((result) => {
   sharedCommentsAvailable = result.available;
   guestbookReady = true;
-  commentForm.querySelector('button[type="submit"]').disabled = false;
+  updateCommentSubmitState();
 });
 commentForm.addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -168,9 +314,13 @@ commentForm.addEventListener('submit', async (event) => {
     commentStatus.textContent = '댓글 저장 방식을 확인하고 있습니다. 잠시 후 다시 시도해 주세요.';
     return;
   }
+  if (!turnstileToken) {
+    commentStatus.textContent = '스팸 방지 확인을 완료해 주세요.';
+    return;
+  }
   const formData = new FormData(commentForm);
-  const author = String(formData.get('author') || '').trim();
-  const body = String(formData.get('body') || '').trim();
+  const author = sanitizeCommentInput(formData.get('author')).replace(/\n/g, ' ');
+  const body = sanitizeCommentInput(formData.get('body'));
   if (!author || author.length > 40 || !body || body.length > 1000) {
     commentStatus.textContent = '닉네임은 1~40자, 댓글은 1~1,000자로 입력해 주세요.';
     return;
@@ -180,11 +330,14 @@ commentForm.addEventListener('submit', async (event) => {
       const response = await fetch(`${API_BASE}/api/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ author, body }),
+        body: JSON.stringify({ author, body, turnstileToken }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || '댓글을 저장하지 못했습니다.');
       commentForm.reset();
+      turnstileToken = '';
+      window.turnstile?.reset(turnstileWidgetId);
+      updateCommentSubmitState();
       commentStatus.textContent = '댓글을 모두가 볼 수 있도록 게시했습니다.';
       const loaded = await loadSharedComments();
       if (!loaded.available) throw new Error('댓글 저장은 완료됐지만 목록을 불러오지 못했습니다. 새로고침해 주세요.');

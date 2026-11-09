@@ -19,9 +19,10 @@ PORT = 8765
 
 DEFAULT_CONTENT = {
     "profile": {
-        "name": "[이름을 입력하세요]",
-        "field": "[전공 · 관심 공학 분야]",
-        "focus": "[관심 기술 · 연구 주제]",
+        "name": "",
+        "field": "",
+        "focus": "",
+        "email": "",
         "about_paragraph_1": "복잡한 문제를 만나면 먼저 현상을 살펴보고, 무엇이 핵심인지부터 생각합니다. 문제를 작은 단계로 나눈 뒤 가설을 세우고 직접 확인하면서, 근거에 맞는 답을 찾아갑니다.",
         "about_paragraph_2": "좋은 아이디어가 실제로 쓰이는 결과가 되려면 설계와 구현은 물론, 시험하고 고치는 과정도 중요하다고 생각합니다. 다른 사람의 의견을 듣고 함께 방법을 찾아가는 일도 제가 소중하게 여기는 과정입니다.",
         "writing_paragraph_1": "공학이 세상이 어떻게 움직이는지 살피는 일이라면, 글쓰기는 사람의 마음과 상상을 들여다보는 일이라고 생각합니다.",
@@ -50,6 +51,7 @@ def initialize_db() -> None:
                 name TEXT NOT NULL,
                 field TEXT NOT NULL,
                 focus TEXT NOT NULL,
+                email TEXT NOT NULL DEFAULT '',
                 about_paragraph_1 TEXT NOT NULL,
                 about_paragraph_2 TEXT NOT NULL,
                 writing_paragraph_1 TEXT NOT NULL,
@@ -74,11 +76,14 @@ def initialize_db() -> None:
             """
         )
         profile = DEFAULT_CONTENT["profile"]
+        columns = {row[1] for row in db.execute("PRAGMA table_info(profile)")}
+        if "email" not in columns:
+            db.execute("ALTER TABLE profile ADD COLUMN email TEXT NOT NULL DEFAULT ''")
         db.execute(
             """INSERT OR IGNORE INTO profile
-               (id, name, field, focus, about_paragraph_1, about_paragraph_2,
+               (id, name, field, focus, email, about_paragraph_1, about_paragraph_2,
                 writing_paragraph_1, writing_paragraph_2)
-               VALUES (1, :name, :field, :focus, :about_paragraph_1,
+               VALUES (1, :name, :field, :focus, :email, :about_paragraph_1,
                        :about_paragraph_2, :writing_paragraph_1, :writing_paragraph_2)""",
             profile,
         )
@@ -92,7 +97,7 @@ def initialize_db() -> None:
 def load_content() -> dict:
     with connect_db() as db:
         row = db.execute(
-            """SELECT name, field, focus, about_paragraph_1, about_paragraph_2,
+            """SELECT name, field, focus, email, about_paragraph_1, about_paragraph_2,
                       writing_paragraph_1, writing_paragraph_2
                FROM profile WHERE id = 1"""
         ).fetchone()
@@ -113,7 +118,7 @@ def save_content(data: dict) -> None:
     works = data.get("works")
     required_profile = set(DEFAULT_CONTENT["profile"])
     if not isinstance(profile, dict) or not required_profile.issubset(profile):
-        raise ValueError("프로필 항목을 모두 입력해 주세요.")
+        raise ValueError("프로필 항목 형식을 확인해 주세요.")
     if not isinstance(works, list) or not works:
         raise ValueError("작품 링크를 한 개 이상 입력해 주세요.")
     for work in works:
@@ -124,7 +129,7 @@ def save_content(data: dict) -> None:
 
     with connect_db() as db:
         db.execute(
-            """UPDATE profile SET name=:name, field=:field, focus=:focus,
+            """UPDATE profile SET name=:name, field=:field, focus=:focus, email=:email,
                about_paragraph_1=:about_paragraph_1,
                about_paragraph_2=:about_paragraph_2,
                writing_paragraph_1=:writing_paragraph_1,
@@ -149,6 +154,15 @@ def save_content(data: dict) -> None:
             ],
         )
     export_content()
+
+
+def sanitize_comment_text(value: str) -> str:
+    import re
+
+    value = re.sub(r"<[^>]*>", "", value)
+    value = value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    value = value.replace('"', "&quot;").replace("'", "&#39;")
+    return re.sub(r"\n{3,}", "\n\n", value.replace("\r\n", "\n").replace("\r", "\n")).strip()
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -212,8 +226,8 @@ class Handler(BaseHTTPRequestHandler):
             if length > 10_000:
                 raise ValueError("댓글 요청이 너무 큽니다.")
             data = json.loads(self.rfile.read(length).decode("utf-8"))
-            author = str(data.get("author", "")).strip()
-            body = str(data.get("body", "")).strip()
+            author = sanitize_comment_text(str(data.get("author", ""))).replace("\n", " ")
+            body = sanitize_comment_text(str(data.get("body", "")))
             if not author or len(author) > 40:
                 raise ValueError("닉네임은 1~40자로 입력해 주세요.")
             if not body or len(body) > 1000:
