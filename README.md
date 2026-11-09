@@ -2,58 +2,60 @@
 
 **라이브 사이트:** <https://ahnyeeun-portfolio.ahnyeeun1481.workers.dev/>
 
-공학 문제 해결 과정과 웹소설·전자책 활동을 소개하는 개인 포트폴리오입니다. 정적 사이트는 Cloudflare Workers에서 제공하고, 공개 방명록 댓글은 Cloudflare D1에 저장합니다.
+공학 문제 해결 과정과 웹소설·전자책 활동을 소개하는 개인 포트폴리오입니다. 홈페이지는 Cloudflare Workers에서 제공하고, 방문자가 남긴 공개 방명록 댓글은 Cloudflare D1에 저장합니다.
 
 ## 주요 기능
 
-- 반응형 소개, 공학 역량, 작가 활동 및 작품 링크
-- 공개 방명록: 모든 방문자가 볼 수 있으며 Cloudflare D1에 저장
-- 댓글 신고와 반복 신고 댓글 자동 숨김
-- Open Graph/Twitter 공유 메타데이터와 1200×630 PNG 미리보기 이미지
-- 로컬 콘텐츠 편집 도구와 SQLite 데이터베이스
+- 소개, 공학 역량, 작가 활동과 작품 링크를 반응형 페이지로 제공합니다.
+- 방명록 댓글은 모든 방문자에게 공개됩니다. 댓글 신고가 누적되면 자동으로 숨김 처리됩니다.
+- 공유용 Open Graph/Twitter 메타데이터와 1200×630 PNG 이미지를 제공합니다.
+- 로컬 콘텐츠 관리 도구로 프로필과 작품 정보를 편집할 수 있습니다.
 
 ## 기술 구성
 
 - HTML, CSS, 브라우저 JavaScript
-- Cloudflare Workers 정적 자산과 댓글 API
+- Cloudflare Workers 정적 자산 및 댓글 API
 - Cloudflare D1 공개 댓글 데이터베이스
 - Python 표준 `sqlite3` 기반 로컬 콘텐츠 관리자
-- SQLite CLI는 개발·점검용입니다. 공개 Worker는 로컬 SQLite 파일에 연결하지 않습니다.
+
+로컬 SQLite와 공개 D1은 별도 데이터베이스입니다. 공개 사이트는 로컬 `portfolio.db`에 직접 연결하지 않습니다.
 
 ## 로컬 콘텐츠 편집
 
-Windows에서 `start_admin.bat`을 실행하고 <http://127.0.0.1:8765/>에서 프로필과 작품 정보를 편집합니다. 데이터는 로컬 `portfolio.db`에 저장됩니다. 공개 댓글의 D1 데이터와는 별도이며 자동 동기화되지 않습니다.
+Windows에서 `start_admin.bat`을 실행한 뒤 <http://127.0.0.1:8765/>에 접속합니다. 프로필과 작품 정보를 수정하고 저장하면 이 PC의 `portfolio.db`에 기록됩니다. 공개 사이트에 반영할 콘텐츠 JSON은 관리자 화면에서 내보낼 수 있습니다.
 
-콘텐츠를 공개하려면 관리자에서 `site-content.json`을 내보내 저장소 루트에 반영한 후 Worker를 다시 배포합니다. 공개 문의 이메일은 실제 주소를 입력하기 전까지 표시되지 않습니다.
+이름·전공·관심 분야·문의 이메일은 실제 정보를 입력하기 전까지 사이트에 표시되지 않습니다. 공개 연락처가 필요하면 관리자에서 수신 가능한 이메일을 입력한 뒤 콘텐츠를 내보내 배포하세요.
 
-## Cloudflare Workers 배포
+## 배포
 
-배포 전 Wrangler에 대상 Cloudflare 계정으로 로그인하고, 설정 파일의 Worker/D1 리소스가 해당 프로젝트와 일치하는지 확인합니다. 그런 다음 프로젝트 루트에서 실행합니다.
+Wrangler가 대상 Cloudflare 계정에 로그인되어 있는지 확인하고, `wrangler.jsonc`의 Worker 및 D1 설정이 이 프로젝트를 가리키는지 검토합니다. 프로젝트 루트에서 다음 명령을 실행하면 공개 파일을 동기화하고 Worker를 배포합니다.
 
 ```bat
 deploy_workers.bat
 ```
 
-이 스크립트는 정적 파일과 OG PNG를 `cloudflare-site/`에 동기화한 뒤 `wrangler.jsonc` 설정으로 배포합니다. D1 스키마 변경은 `worker/migrations/`에 새 순번 migration으로 추가하고, 먼저 로컬에서 검증한 다음 원격에 적용합니다.
+D1 스키마를 변경할 때는 기존 migration을 수정하지 말고 `worker/migrations/`에 새 번호의 파일을 추가합니다. 빈 로컬 DB에서 migration 전체를 먼저 확인한 뒤 원격에 적용합니다.
 
 ```powershell
 wrangler d1 migrations apply portfolio-comments --local --config .\wrangler.jsonc
 wrangler d1 migrations apply portfolio-comments --remote --config .\wrangler.jsonc
 ```
 
-댓글 rate-limit용 `RATE_LIMIT_SALT`는 Wrangler Secret으로 보관합니다. 비밀값을 소스 코드나 문서에 넣지 마세요.
+댓글 rate limit에 쓰는 `RATE_LIMIT_SALT`는 Wrangler Secret으로만 관리합니다. 비밀값을 코드나 문서에 넣지 마세요.
 
-## Issues와 기여
+## Issues 및 기여
 
-버그 제보와 개선 요청은 [GitHub Issues](https://github.com/ahnyeeun1481-ctrl/ai2/issues)에 남겨 주세요. 재현 단계, 사용 기기·브라우저, 기대 결과와 실제 결과를 함께 적으면 확인에 도움이 됩니다. 변경 사항은 작은 단위로 제출하고, 배포 전 `harness/verify_workers.bat`의 체크 항목을 확인하세요.
+버그와 개선 요청은 [GitHub Issues](https://github.com/ahnyeeun1481-ctrl/ai2/issues)에 남겨 주세요. 재현 단계, 브라우저·기기, 기대한 결과와 실제 결과를 적으면 문제를 확인하는 데 도움이 됩니다.
 
-## 프로젝트 문서
+배포 전에는 `node --check`로 JavaScript를 확인하고 `wrangler deploy --dry-run --config .\wrangler.jsonc`로 바인딩과 공개 자산을 점검합니다. 공개 폴더에 `portfolio.db`, 로컬 관리자 파일, 인증 정보나 Secret이 포함되지 않았는지도 확인하세요.
 
-- [SQLite 콘텐츠 관리자 안내](./CONTENT_ADMIN.md)
-- `harness/HARNESS.md`: 코드 작성·보안·테스트·배포 하네스
-- `worker/migrations/`: D1 스키마 변경 이력
-- `wrangler.jsonc`: Worker 정적 자산과 D1 바인딩 설정
+## 댓글과 개인정보
 
-## 데이터·개인정보 안내
+방명록 댓글은 방문자에게 공개됩니다. 닉네임이나 댓글에 이메일, 전화번호 등 민감한 정보를 쓰지 마세요. 작성 제한과 신고 후 자동 숨김 기능이 있지만, 모든 부적절한 내용을 자동으로 걸러내지는 못합니다. 로컬 `portfolio.db`와 Wrangler 인증 정보는 공개 저장소에 올리지 않습니다.
 
-공개 방명록 댓글은 방문자에게 표시됩니다. 닉네임이나 댓글에 이메일, 전화번호 등 민감한 개인정보를 입력하지 마세요. 작성 제한과 신고 기능이 있지만 자동 필터링이 모든 부적절한 내용을 막는 것은 아닙니다. 로컬 `portfolio.db`, Wrangler 인증 정보와 Secret은 공개 저장소에 올리지 않습니다.
+## 관련 파일
+
+- `CONTENT_ADMIN.md` — 로컬 SQLite 콘텐츠 관리자 안내
+- `worker/migrations/` — D1 스키마 변경 이력
+- `worker/src/index.js` — Workers 댓글 API
+- `wrangler.jsonc` — Worker, 정적 자산, D1 바인딩 설정
