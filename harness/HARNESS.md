@@ -1,83 +1,92 @@
-# Website build and deployment harness
+# Website architecture and Cloudflare deployment harness
 
-Use this harness when creating or changing a website in this repository. It records the project conventions and safety gates established for this site. It is a checklist, not permission to deploy without reviewing the destination account and public files.
+This guide contains the detailed implementation and deployment checklist for static websites backed by Cloudflare Workers and D1. Project-wide entry rules are in [`../AGENTS.md`](../AGENTS.md); use the related [QA guide](QA_AND_ISSUES.md), [SEO guide](SEO_AND_METADATA.md), [performance guide](PERFORMANCE.md), [analytics guide](ANALYTICS.md), and [session retrospective trigger](SESSION_RETROSPECTIVE.md) when relevant.
 
-## 1. Confirm the project before editing
+## 1. Understand the project before editing
 
-- Inspect the repository root, current Git status, framework, existing build/deploy commands, and Cloudflare account identity.
-- Preserve existing files and history. Never replace a remote repository, database, or Pages project without explicit authorization.
-- Identify the canonical production URL from the current Cloudflare configuration/deployment. Do not copy another project's domain, account ID, database ID, or worker name.
-- Keep secrets out of source, JSON files, commits, logs, and screenshots. Use Wrangler secrets.
+- Inspect the repository root, Git branch/status/history, framework, existing build/deploy commands, and Cloudflare account identity.
+- Preserve existing files and history. Never replace a remote repository, database, or Pages/Worker project without explicit authorization.
+- Identify the canonical production URL from the current configuration and a live response. Do not copy another project's domain, account ID, database ID, or Worker name.
+- Keep secrets out of source, JSON files, commits, logs, screenshots, and public bundles. Use Wrangler secrets.
+- Determine which directories are source, generated output, and deployment assets. Compare hashes where files are duplicated.
 
-## 2. Static website conventions
+## 2. Front-end conventions
 
-- Keep semantic, accessible HTML and the existing CSS/JavaScript conventions; use progressive enhancement where practical.
-- Provide a unique `<title>`, a concise description, canonical URL, Open Graph title/description/URL/image, and Twitter large-image metadata.
-- OG images must be absolute public URLs, publicly fetchable, preferably PNG/JPEG, and use a tested 1200×630 image. Verify response status and `Content-Type`.
-- Keep `robots.txt` and sitemap URLs aligned to the canonical production origin.
-- If static JSON is used for public content, it must contain public data only. Do not publish SQLite files, local admin panels, backups, credentials, or personal data unintentionally.
-- Treat all user-generated content as untrusted. Render with `textContent`, validate input on the server, and use parameterized SQL.
+- Use semantic, accessible HTML, responsive CSS, progressive enhancement, and existing project conventions. Keep keyboard focus visible and respect reduced-motion preferences.
+- Use absolute root paths for root-hosted static assets when nested routes could otherwise resolve relative paths incorrectly.
+- Every interactive control needs a clear accessible name, keyboard behavior, and observable loading/success/error state.
+- Treat visitor text and API values as untrusted. Validate server-side, use parameterized SQL, and render with `textContent`/text nodes rather than unsafe HTML insertion.
+- For new-tab external links, use `rel="noopener noreferrer"` and communicate new-window behavior accessibly.
 
-## 3. Cloudflare Workers + D1 layout
+## 3. Public metadata and assets
 
-- Use a root `wrangler.jsonc` with a Worker entrypoint, static asset binding, and explicit D1 binding.
-- Keep public assets in the configured asset directory; route only intended `/api/*` paths through the Worker.
-- Put D1 schema changes in new, sequential, immutable migration files. Never edit an already-applied migration to change remote schema. Test the complete migration chain against a fresh local D1 database before applying remotely.
-- Use prepared statements for all user-controlled SQL values.
-- Keep API CORS same-origin/allowlist-only. Validate method, content type, body size while reading the stream, data types, trimmed lengths, and error paths.
-- Rate-limit public writes. If an IP identifier is stored, store only a secret-salted hash; do not persist the raw IP. Require the salt to be a Wrangler secret and fail closed if it is missing.
-- Add abuse/reporting/moderation behavior for public UGC and clearly document whether comments are shared, local-only, moderated, or deleted.
-- Keep the local SQLite editor and remote D1 backend clearly separated. Document that they are not automatically synchronized.
+- Each indexable HTML document needs a unique title, description, canonical URL, Open Graph metadata, and appropriate Twitter card metadata. See [SEO_AND_METADATA.md](SEO_AND_METADATA.md).
+- OG images must use an absolute public URL and a supported, tested raster image where social platforms require it; verify status and MIME type.
+- Keep `robots.txt` and sitemap aligned with the canonical origin. Do not sitemap admin or private routes.
+- Never publish placeholder profile/contact data, local SQLite databases, backups, credentials, or private admin files unintentionally.
 
-## 4. Required validation before deploy
+## 4. Workers and D1 structure
 
-Run from the repository root in PowerShell:
+- Use an explicit Wrangler configuration with Worker entrypoint, static asset binding, D1 binding, compatibility date, and exact asset not-found behavior.
+- Keep public assets in the configured asset directory. The deploy script should synchronize source files deterministically and exclude local-only/private files.
+- Route intended `/api/*` paths through the Worker and return real 404s for unknown API/resource paths; avoid returning an HTML SPA fallback for missing files.
+- Put schema changes in new sequential immutable migrations. Never edit an already-applied migration. Test the complete chain from an empty local D1 database before remote apply.
+- Use prepared statements for user-controlled values. Validate method, content type, body size while streaming, field types/lengths, Origin, and error conditions.
+- Restrict CORS to exact intended origins. Apply rate limits to public writes. If client IP is used, store only a secret-salted hash and fail closed when the required secret is missing.
+- Add abuse/reporting/moderation policy for public user-generated content. Clearly explain whether submissions are public/shared, local-only, moderated, retained, and deletable.
+- Keep local SQLite and remote D1 responsibilities explicit; do not imply automatic synchronization when none exists.
+
+## 5. Local validation before deployment
+
+Run relevant checks from the repository root (adapt to the actual project):
 
 ```powershell
 node --check .\script.js
 node --check .\worker\src\index.js
 python -m py_compile .\content_admin.py
-wrangler d1 migrations apply <database-name> --local
+wrangler d1 migrations apply <database-name> --local --config .\wrangler.jsonc
 wrangler deploy --dry-run --config .\wrangler.jsonc
 ```
 
 Also verify:
 
-- Migration chain succeeds from an empty local D1 database.
-- API tests cover valid writes, malformed JSON, wrong field types, oversized bodies, unsupported methods, forbidden Origin, rate limiting, duplicate reports, and moderation threshold.
-- Test rows are removed afterward; confirm test data is absent from remote D1.
-- The deployment asset folder contains only intended public files. Check explicitly that `portfolio.db`, `admin.html`, credentials, local config and backups are excluded unless intentionally public.
-- Root source assets and staged deployment assets match (for example, SHA-256 comparison).
-- A dry-run shows the expected Assets and D1 bindings and the intended project/account.
+- The complete migration chain succeeds on a fresh local D1 database.
+- API tests cover valid/invalid input, malformed JSON, wrong types, body limits, unsupported methods, forbidden Origins, rate limiting, duplicate moderation actions, and threshold behavior.
+- Test data is cleaned up; confirm no test rows remain remotely.
+- The deployment asset directory contains only intended public files. Explicitly check local DBs, admin panels, credentials, backups, and local config.
+- Root source assets and deployment assets match (e.g. SHA-256). A successful deploy with stale staged files is not a correct release.
+- Wrangler dry-run shows the intended project/account and expected Assets/D1 bindings.
 
-## 5. Deployment and post-deploy checks
+## 6. Cloudflare deployment procedure
 
-- Before deployment, confirm Wrangler is logged into the intended account and the Worker/project name and D1 ID match the current config.
-- Apply remote D1 migrations only after local migration tests pass:
+1. Confirm authenticated Wrangler account with `wrangler whoami` and compare Worker name, D1 ID, and domain with the current project config.
+2. Review staged/public assets and the Git diff. Do not expose secret values.
+3. Apply remote D1 migrations only after fresh local migration tests pass and the user-requested scope includes remote schema changes:
 
-  ```powershell
-  wrangler d1 migrations apply <database-name> --remote --config .\wrangler.jsonc
-  ```
+   ```powershell
+   wrangler d1 migrations apply <database-name> --remote --config .\wrangler.jsonc
+   ```
 
-- Store required secrets with `wrangler secret put <NAME>`. Never echo the secret back or write it into files.
-- Use the repository deploy script when present; otherwise run `wrangler deploy --config .\wrangler.jsonc` after syncing assets.
-- Check the returned production URL. Verify homepage, OG image, CSS, JS, public content JSON, sitemap, robots, GET/POST API behavior, and expected HTTP/content types.
-- Confirm database files and local admin routes are not publicly served. A static hosting SPA fallback may return HTML with status 200 for unknown paths, so inspect response body and `Content-Type`, not status alone.
-- If a rollback is needed, use a known-good Worker version/deployment and preserve D1 data unless destructive rollback is explicitly approved.
+4. Set secrets via `wrangler secret put <NAME>` or a reviewed secure script. Never echo secrets back or save them in tracked files.
+5. Use the repo deploy script when present; otherwise run the configured deploy command after synchronizing assets.
+6. Verify the actual production URL and bindings. Check page, CSS, JS, content JSON, OG image, favicon, robots, sitemap, API methods, status, MIME type, cache/security headers, and expected body.
+7. Confirm private DB files and local-only admin endpoints are not served publicly. Check body and `Content-Type` as well as status, because fallbacks can return HTML `200` for nonexistent assets.
+8. Preserve D1 data on rollback unless a destructive rollback is explicitly approved. Prefer a known-good Worker version and forward-fix schema changes.
 
-## 6. Review checklist for AI-generated changes
+## 7. Security/review checklist
 
-- [ ] No duplicate client-side logic or dead helpers.
 - [ ] No wildcard CORS or hard-coded secrets.
-- [ ] No unsafe HTML insertion for user text.
-- [ ] No unintended local files in public assets.
-- [ ] Correct canonical/OG/Twitter URLs point to the actual production hostname.
-- [ ] OG image is a supported raster format, absolute URL, and fetched successfully.
-- [ ] Migrations are append-only and tested from an empty database.
-- [ ] API limits and error responses are tested.
-- [ ] D1/local SQLite responsibilities and moderation behavior are documented.
-- [ ] Deployment has been verified from the public URL, not inferred only from a successful upload.
+- [ ] Admin authorization enforced by server for every admin API operation.
+- [ ] No unsafe HTML rendering of visitor text; SQL is parameterized.
+- [ ] Body-size enforcement handles requests without `Content-Length`.
+- [ ] No local DB/cache/backup/secret/private files in public deployment assets.
+- [ ] Canonical/OG/Twitter URLs use the actual production hostname; OG image fetch returns expected image MIME.
+- [ ] Migrations are append-only and tested from a fresh database.
+- [ ] API validation, error responses, CORS and rate limits are tested.
+- [ ] Public comment visibility, moderation and retention are documented.
+- [ ] Deployment has been verified from the public URL, not inferred from upload success.
+- [ ] Performance and Search Console/analytics status are reported as measured, pending, or blocked—not guessed.
 
-## Current project-specific settings
+## Current project's deployment values
 
-The current production Worker, D1 name/ID, and site origin are in `../wrangler.jsonc`. Treat those as this project's values only; for a new site, create its own Worker and D1 and replace settings only after confirming the target Cloudflare account.
+The current Worker, D1 name/ID, origin, and public analytics identifiers are in the project config/source. Treat them as specific to this repository only. For another website, create its own resources and verify each value with the owner before configuring it. Secret values must never be copied from this project.
