@@ -12,12 +12,13 @@ This file is the project-wide index and source of working rules for AI agents an
 
 ## Detailed guides
 
+- [Repository overview, development experience, and setup](harness/README.md)
 - [Website architecture, accessibility, security, Cloudflare Workers and D1 deployment](harness/HARNESS.md)
 - [QA, E2E, edge cases, security checks, and issue triage](harness/QA_AND_ISSUES.md)
 - [SEO, metadata, Google Search Console, Open Graph, and favicons](harness/SEO_AND_METADATA.md)
 - [Performance measurement and optimization](harness/PERFORMANCE.md)
 - [Analytics, consent, GTM, and conversion events](harness/ANALYTICS.md)
-- [Local SQLite content administration and public D1 comments](CONTENT_ADMIN.md)
+- [Local SQLite content administration and public D1 comments](harness/CONTENT_ADMIN.md)
 
 ## Shared quality gates
 
