@@ -64,11 +64,11 @@ Also verify:
 3. Apply remote D1 migrations only after fresh local migration tests pass and the user-requested scope includes remote schema changes:
 
    ```powershell
-   wrangler d1 migrations apply <database-name> --remote --config .\wrangler.jsonc
+  wrangler d1 migrations apply <database-name> --remote --config .\wrangler.jsonc
    ```
 
 4. Set secrets via `wrangler secret put <NAME>` or a reviewed secure script. Never echo secrets back or save them in tracked files.
-5. Use the repo deploy script when present; otherwise run the configured deploy command after synchronizing assets.
+- Use `deploy_workers.bat` when present; otherwise run `wrangler deploy --config .\wrangler.jsonc` after synchronizing assets.
 6. Verify the actual production URL and bindings. Check page, CSS, JS, content JSON, OG image, favicon, robots, sitemap, API methods, status, MIME type, cache/security headers, and expected body.
 7. Confirm private DB files and local-only admin endpoints are not served publicly. Check body and `Content-Type` as well as status, because fallbacks can return HTML `200` for nonexistent assets.
 8. Preserve D1 data on rollback unless a destructive rollback is explicitly approved. Prefer a known-good Worker version and forward-fix schema changes.

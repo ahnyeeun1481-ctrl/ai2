@@ -10,6 +10,14 @@ This file is the project-wide index and source of working rules for AI agents an
 4. Treat deployed configuration as project-specific. Never copy another project's domain, Cloudflare account/database IDs, analytics IDs, or secrets.
 5. State a short plan before making changes, implement only the requested scope, then validate changed files and behavior.
 
+## Folder map
+
+- Project-root HTML/CSS/JS, Wrangler config, and Windows helper scripts are the active source and run entry points.
+- `worker/` — Cloudflare Worker implementation and append-only D1 migrations.
+- `cloudflare-site/` — generated deployment asset copies; `deploy_workers.bat` syncs them from project-root sources. Do not hand-edit these mirrors.
+- `harness/` — project overview and web development/QA/deployment guides.
+- `portfolio.db` — local-only database; never commit or copy into public assets.
+
 ## Detailed guides
 
 - [Repository overview, development experience, and setup](harness/README.md)
